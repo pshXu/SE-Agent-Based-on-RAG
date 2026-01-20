@@ -1,0 +1,25 @@
+__pycache__/
+.DS_Store
+.venv/
+.env
+*.log
+
+# Data Stores
+data/vector_store/
+data/llama_vector_store/
+data/processed/
+
+# Raw Documents (Keeping the folder but ignoring the content)
+data/raw/books/*
+!data/raw/books/.gitkeep
+
+# Models (if any downloaded locally)
+models/
+
+# Documentation (Internal Use Only)
+design.md
+project.md
+progress.md
+dify_tutorial.md
+learning_guide.md
+todo.md
