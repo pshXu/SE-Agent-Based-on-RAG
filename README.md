@@ -1,4 +1,4 @@
-# 南大软件学院 SE 流程智能体 (Agentic RAG System)
+# 基于rag的软件工程智能问答助手 (Agentic RAG System)
 
 本项目是一个基于 **LangGraph** 和 **LlamaIndex** 构建的垂直领域智能咨询系统。它专为解决复杂的软件工程（SE）流程咨询而设计，具备多智能体协作、自主检索、长程记忆以及对非结构化文档（扫描件 PDF）的高精度解析能力。
 
