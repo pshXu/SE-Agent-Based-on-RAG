@@ -61,13 +61,16 @@ def route(state: GraphState) -> GraphState:
         
         if "process" in intent:
             next_step = "se_process"
+            current_intent = "process"
         else:
             # Fallback to synthesizer for general queries or unclear intent
             next_step = "synthesizer"
+            current_intent = "general"
             
     except Exception as e:
         logging.error(f"Error in router: {e}")
         next_step = "synthesizer"
+        current_intent = "general"
         
     print(f"Routing to: {next_step}")
-    return {"next_step": next_step}
+    return {"next_step": next_step, "current_intent": current_intent}

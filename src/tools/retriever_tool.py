@@ -22,12 +22,13 @@ def _init_retriever():
 
 def _generate_hyde_doc(query: str) -> str:
     """
-    Generates a hypothetical document using the LLM.
+    Generates a ultra-concise hypothetical document to speed up RAG retrieval.
+    Less tokens = Faster response.
     """
     llm = get_llm()
     prompt = PromptTemplate(
-        template="""请你扮演一个软件工程专家。针对以下问题，写一段简短的、专业的、事实性的回答。
-这将被用于检索增强生成（RAG）的查询扩展。不要包含客套话，直接输出内容。
+        template="""你是一名软件工程专家。请针对以下问题，写一段【极简】且【专业】的事实性回答（100字以内）。
+该内容将用于语义检索，请直接输出核心知识点，严禁任何客套话、引言或总结性陈述。
 
 问题：{query}
 回答：""",
@@ -35,6 +36,7 @@ def _generate_hyde_doc(query: str) -> str:
     )
     chain = prompt | llm | StrOutputParser()
     try:
+        # 这里的调用是并发发起的，缩短字数能极大提升并行效率
         return chain.invoke({"query": query})
     except Exception as e:
         logging.error(f"HyDE generation failed: {e}")
@@ -42,7 +44,26 @@ def _generate_hyde_doc(query: str) -> str:
 
 def retrieve_docs(query: str) -> str:
     """
-    Performs retrieval using HyDE + LlamaIndex (Sentence Window).
+    Performs retrieval and returns a formatted string. (For simple tool use)
+    """
+    docs = retrieve_knowledge(query)
+    if isinstance(docs, str): return docs # Error message
+    
+    if not docs:
+        return "没有在本地知识库中找到相关文档。"
+    
+    # 3. Format results for the Agent
+    result = []
+    for i, doc in enumerate(docs):
+        source = doc.metadata.get("source", "Unknown")
+        result.append(f"[本地文档{i+1}] 来源: {source}\n内容: {doc.page_content}")
+    
+    return "\n\n".join(result)
+
+def retrieve_knowledge(query: str) -> list:
+    """
+    Performs retrieval using HyDE + LlamaIndex and returns raw Document list.
+    Used by advanced nodes like se_process for further processing.
     """
     try:
         # 1. HyDE Generation (Industrial trick)
@@ -52,20 +73,10 @@ def retrieve_docs(query: str) -> str:
         # 2. Retrieval using LlamaIndex
         retriever = _init_retriever()
         docs = retriever.retrieve(hyde_doc, k_final=5)
-        
-        if not docs:
-            return "没有在本地知识库中找到相关文档。"
-        
-        # 3. Format results for the Agent
-        result = []
-        for i, doc in enumerate(docs):
-            source = doc.metadata.get("source", "Unknown")
-            result.append(f"[本地文档{i+1}] 来源: {source}\n内容: {doc.page_content}")
-        
-        return "\n\n".join(result)
+        return docs
     except Exception as e:
         logging.error(f"Retrieval tool error: {e}")
-        return f"检索过程中发生错误: {e}"
+        return []
 
 def get_retriever_tool() -> Tool:
     """

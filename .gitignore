@@ -20,6 +20,10 @@ models/
 design.md
 project.md
 progress.md
-dify_tutorial.md
-learning_guide.md
-todo.md
+revise.md
+stress_summary.csv
+stress_full.csv
+golden_dataset.json
+results_hybrid_llm.csv
+results_local_llm.csv
+

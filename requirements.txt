@@ -26,3 +26,7 @@ pymupdf
 EbookLib
 html2text
 
+ragas
+pandas
+datasets
+mcp>=1.0.0

@@ -1,90 +1,65 @@
-# 基于rag的软件工程智能问答助手 (Agentic RAG System)
+# 基于 RAG 的软件工程智能问答助手 (Agentic RAG System)
 
-本项目是一个基于 **LangGraph** 和 **LlamaIndex** 构建的垂直领域智能咨询系统。它专为解决复杂的软件工程（SE）流程咨询而设计，具备多智能体协作、自主检索、长程记忆以及对非结构化文档（扫描件 PDF）的高精度解析能力。
+本项目是一个基于 **LangGraph**、**LlamaIndex** 和构建的垂直领域智能咨询系统。它专为解决复杂的软件工程（SE）流程咨询而设计，具备多智能体协作、计划反思循环、并行检索以及质量评估体系。
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 
+---
+
 ## ✨ 核心特性
 
-*   **Agentic RAG (代理式检索)**: 引入 **ReAct** 循环与 **显式问题拆解 (Explicit Decomposition)**，智能体能自动将复杂问题拆分为多个子查询，并自主决定查库还是搜网。
-*   **LlamaIndex 驱动**: 底层检索引擎全面升级为 LlamaIndex，支持 **Sentence Window Retrieval (句子窗口检索)**，实现毫秒级精准定位与完整上下文回填。
-*   **多模态解析 (OCR)**: 集成 **Unstructured + Tesseract**，支持中英混杂的扫描件 PDF 识别。
-*   **HyDE 增强**: 引入 **Hypothetical Document Embeddings**，利用“答案匹配答案”技术解决语义不对称问题。
-*   **智能记忆系统**: 采用 **Buffer + Summary** 双层架构，通过 Summarizer Agent 实现选择性记忆压缩，有效控制 Token 消耗并过滤闲聊噪音。
+### 1. 代理式架构 (Agentic Workflow)
+*   **Plan-and-Execute + Reflection**: 采用三级代理逻辑：
+    *   **Planner**: 自动将复杂问题拆分为高质量子查询。
+    *   **Validator**: 基于 Embedding 的数学评估模型，验证子查询的 **语义累加覆盖度** 与 **独立性**。
+    *   **Executor**: 并发执行检索任务，结合 HyDE 增强与内容级去重，大幅提升响应速度。
+*   **智能记忆系统**: 采用 **Buffer + Summary** 双层架构，通过 Summarizer Agent 自动提取 SE 技术要点，清理冗余，实现长程对话稳定性。
+
+### 2. 高级检索策略 (Advanced RAG)
+*   **结构化切分**: 使用 `MarkdownNodeParser` 实现“标题 -> 段落 -> 块”的三级切分，保留文档的层级语义。
+*   **混合检索 (Hybrid Search)**: 结合 **向量检索 (BGE-M3)** 与 **关键字检索 (BM25)**，通过 **RRF (Reciprocal Rank Fusion)** 进行得分融合。
+*   **重排序 (Rerank)**: 使用 **Cross-Encoder** 进行精排，并引入 **MMR (Maximal Marginal Relevance)** 算法平衡相关性与多样性。
+*   **HyDE 增强**: 引入假设性文档嵌入，利用“答案匹配答案”解决语义不对称问题。
+
+### 3. 多模态解析
+*   **OCR 引擎**: 集成 **Unstructured + Tesseract**，支持中英混杂的扫描件 PDF 自动识别，具备复杂的版面分析能力。
 
 ---
 
-## 🛠️ 环境准备
+## 📊 评估与质量保障 (Evaluation)
 
-### 1. 克隆项目
-```bash
-git clone <repository_url>
-cd nju-se-agent
-```
+项目内置了完整的评估框架（位于 `tests/evaluation/`），确保系统回答的忠实度与准确性。
 
-### 2. 系统依赖 (macOS)
-本项目依赖 **Tesseract** 进行 OCR 识别，依赖 **Poppler** 处理 PDF 图像。
-```bash
-brew install tesseract
-brew install tesseract-lang  # 安装中文语言包 (chi_sim)
-brew install poppler
-```
+*   **Ragas 自动化评估**: 
+    *   **Faithfulness (忠实度)**: 检查答案是否完全基于参考文档。
+    *   **Answer Relevance (答案相关性)**: 检查答案是否准确解决用户问题。
+    *   **Context Recall (上下文召回率)**: 检查检索到的内容是否覆盖了标准答案。
+*   **黄金数据集 (Golden Dataset)**: 包含 50+ 组由专家标注的 SE 领域问答对。
+*   **压力测试**: 模拟长程对话与高并发检索，评估系统的 Token 消耗与内存效率。
+*   **性能对比**: 提供本地模型（Local LLM）与混合模型（Hybrid LLM）的测试报告（`.csv`）。
 
-### 3. Python 依赖
-建议使用 Conda 创建独立环境：
+---
+
+## 🚀 快速开始
+
+### 1. 环境准备 (macOS)
 ```bash
-conda create -n rag python=3.11
-conda activate rag
+brew install tesseract poppler
+conda create -n rag python=3.11 && conda activate rag
 pip install -r requirements.txt
 ```
 
-### 4. 环境变量配置
-复制 `.env.example` 为 `.env`，并填入您的 API Key：
-```bash
-cp .env.example .env
-```
-**关键配置项**：
-*   `OPENAI_API_KEY`: 您的 LLM 服务商 Key。
-*   `OPENAI_API_BASE`: 如果使用中转服务（如 DeepSeek），请在此配置 Base URL。
-*   `BGE_MODEL_NAME`: 默认使用 `BAAI/bge-m3`。
-
----
-
-## 📚 数据准备与入库
-
-### 1. 放置文档
-请将您的知识库文档（支持 PDF, HTML, Markdown）放入以下目录：
-> **`data/raw/books/`**
-
-*   系统支持递归扫描子目录。
-*   支持 **扫描件 PDF**（会自动触发 OCR）。
-*   支持 **中英混杂** 内容。
-
-### 2. 构建索引 (Ingestion)
-运行以下脚本，将原始文档转化为 LlamaIndex 向量索引：
+### 2. 数据入库
+将 PDF/MD 放入 `data/raw/books/`，运行：
 ```bash
 python src/rag/ingestion_llama.py
 ```
-*   该过程可能较慢（特别是包含 OCR 时），请耐心等待。
-*   索引文件将持久化保存在 `data/llama_vector_store/`。
 
----
-
-## 🚀 启动智能体
-
-索引构建完成后，即可启动 CLI 交互界面：
-```bash
-python main.py
-```
-
-### 交互示例
-*   **查规范**: "敏捷开发和瀑布模型有什么区别？"
-*   **查细节**: "需求规格说明书（SRS）应该包含哪些章节？"
-*   **多轮追问**: 
-    *   User: "什么是 CMMI？"
-    *   Agent: (回答...)
-    *   User: "**它**有几个等级？" (系统能自动识别“它”指代 CMMI)
+### 3. 启动交互
+*   **CLI 交互**: `python main.py`
+*   **MCP 模式**: 在 IDE 中配置 `mcp_server.py` 以接入标准协议。
+*   **性能评估**: 运行 `python tests/evaluation/evaluator.py` 查看当前系统的 Ragas 得分。
 
 ---
 
@@ -92,17 +67,26 @@ python main.py
 
 ```text
 nju-se-agent/
-├── data/
-│   ├── raw/books/          # [输入] 原始文档存放区
-│   └── llama_vector_store/ # [输出] 向量索引持久化目录
 ├── src/
-│   ├── agents/             # LangGraph 智能体逻辑 (Router, SE Process, Synthesizer)
-│   ├── rag/                # LlamaIndex 引擎 (Ingestion, Retriever)
-│   └── tools/              # 工具封装 (Local Retriever, Web Search)
-├── config/                 # 配置文件
-└── main.py                 # 启动入口
+│   ├── agents/
+│   │   ├── nodes/              # 各阶段 Agent 逻辑 (Planner, Validator, Executor...)
+│   │   └── graph.py            # LangGraph 状态机编排
+│   ├── rag/
+│   │   ├── ingestion_llama.py  # Markdown 优化入库流程
+│   │   ├── retriever_llama.py  # 混合检索与重排序核心
+│   │   └── vector_db.py        # 向量库底层封装
+│   ├── tools/                  # 检索与搜索工具集
+│   └── utils/                  # LLM 工厂、OCR 转换器
+├── tests/
+│   ├── evaluation/             # 评估框架 (Dataset Gen, Ragas Eval, Stress Test)
+│   └── test_rag.py             # 核心组件测试
+├── mcp_server.py               # MCP 协议适配层
+└── design.md                   # 系统详细设计方案
+
 ```
 
-## ⚠️ 注意事项
-*   **Token 消耗**: 由于开启了 HyDE 和多跳检索，复杂问题的 Token 消耗较大（单次可能几千 Token）。
-*   **首次运行**: 第一次运行 `ingestion_llama.py` 时会自动下载 BGE-M3 和 Cross-Encoder 模型（约 2GB），请确保网络通畅。
+---
+
+## ⚠️ 性能提示
+*   **GPU 加速**: 默认启用 MPS (Metal Performance Shaders) 加速 Embedding。
+*   **并发限制**: 并发检索数建议设为 3-5 以规避 API 频率限制。
